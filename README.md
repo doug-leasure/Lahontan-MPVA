@@ -1,7 +1,7 @@
 # Lahontan-MPVA
 This repository includes source code for a multi-population viability analysis conducted for 155 Lahontan cutthroat trout populations across the sub-species' range in the Great Basin, USA.  
 
-The methods were published in *Ecology* ([Leasure et al. 2018](https://doi.org/10.1002/ecy.2538)).
+The methods were published in *Ecology* ([Leasure et al. 2018](https://doi.org/10.1002/ecy.2538)) with applications published in *Conservation Biology* ([Neville et al. 2019](https://doi.org/10.1111/cobi.13385)).
 
 ## Repository Structure
 `./scripts/` includes all of the scripts used to process data and fit statistical models.  
