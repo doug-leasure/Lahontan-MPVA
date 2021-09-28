@@ -94,8 +94,27 @@ write.csv(result_mean, file='out/tables/abundances_mean.csv', row.names=F)
 write.csv(result_harmonic, file='out/tables/abundances_harmonic.csv', row.names=F)
 
 
+## TEST: Harmonic mean versus Bayesian harmonic mean
 
+# number of random draws -- representing MCMC iterations
+n <- 1e4
 
+# data representing posterior distribution of abundance estimates for three years (a, b, c)
+dat <- data.frame(a = rlnorm(n, log(500), 0.5),
+                  b = rlnorm(n, log(1000), 0.5),
+                  c = rlnorm(n, log(750), 0.5))
 
+# function: harmonic mean
+mean_harmonic <- function(x) (sum(x^-1)/length(x))^-1
+
+# non-Bayesian harmonic mean calculated from the mean of Bayesian abundance estimates
+result1 <- mean_harmonic(c(mean(dat$a),
+                           mean(dat$b),
+                           mean(dat$c)))
+result1
+
+# mean of Bayesian harmonic mean
+result2 <- mean(apply(dat, 1, mean_harmonic))
+result2
 
 
