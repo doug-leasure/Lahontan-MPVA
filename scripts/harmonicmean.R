@@ -1,0 +1,101 @@
+# cleanup
+rm(list=ls()); gc(); cat("\014"); try(dev.off(), silent=T)
+
+# working directory
+setwd(file.path(dirname(rstudioapi::getSourceEditorContext()$path),'../wd'))
+
+# libraries
+library(runjags)
+library(coda)
+
+# load results
+load('out/objects/jags.dat.R')
+load('out/objects/jm.R')
+load('out/objects/popnames.R')
+
+x <- jm$mcmc[,which(grepl('N[',varnames(jm$mcmc), fixed=T)), drop=T]
+
+d <- x[[1]]
+for(i in 2:length(x)){
+  d <- rbind(d, x[[i]])
+}
+d <- as.data.frame(d)
+
+# harmonic mean function
+mean_harmonic <- function(x){
+  (sum(x^-1)/length(x))^-1
+}
+
+# setup data
+result_abundance <- data.frame(matrix(NA, nrow=0, ncol=8))
+names(result_abundance) <- c('popname','year','popnum','yearnum','N_mean','N_median','N_lower','N_upper')
+
+result_harmonic <- data.frame(matrix(NA, nrow=0, ncol=8))
+names(result_harmonic) <- c('popname','popnum','year_start','year_end','N_mean','N_median','N_lower','N_upper')
+
+result_mean <- data.frame(matrix(NA, nrow=0, ncol=8))
+names(result_mean) <- c('popname','popnum','year_start','year_end','N_mean','N_median','N_lower','N_upper')
+
+# calculations by population
+for(i in 1:jags.dat$npops){
+  cat(paste(i,'\n'))
+  ts <- jags.dat$t_ti[i,1]:jags.dat$t_ti[i,jags.dat$nt[i]]
+  cols <- paste0('N[',i,',',ts,']')
+  result_row <- nrow(result_mean)+1
+  
+  # mean abundance
+  if(length(cols) > 1){
+    x <- apply(d[,cols], 1, mean)
+  } else {
+    x <- d[,cols]
+  }
+  result_mean[result_row, 'popname'] <- popnames[i]
+  result_mean[result_row, 'popnum'] <- i
+  result_mean[result_row, 'year_start'] <- min(ts+1983)
+  result_mean[result_row, 'year_end'] <- max(ts+1983)
+  result_mean[result_row, 'N_mean'] <- mean(x)
+  result_mean[result_row, 'N_median'] <- median(x)
+  result_mean[result_row, 'N_lower'] <- quantile(x, probs=0.025)
+  result_mean[result_row, 'N_upper'] <- quantile(x, probs=0.975)
+  
+  # harmonic mean abundance
+  if(length(cols) > 1){
+    x <- apply(d[,cols], 1, mean_harmonic)
+  } else {
+    x <- d[,cols]
+  }
+  result_harmonic[result_row, 'popname'] <- popnames[i]
+  result_harmonic[result_row, 'popnum'] <- i
+  result_harmonic[result_row, 'year_start'] <- min(ts+1983)
+  result_harmonic[result_row, 'year_end'] <- max(ts+1983)
+  result_harmonic[result_row, 'N_mean'] <- mean(x)
+  result_harmonic[result_row, 'N_median'] <- median(x)
+  result_harmonic[result_row, 'N_lower'] <- quantile(x, probs=0.025)
+  result_harmonic[result_row, 'N_upper'] <- quantile(x, probs=0.975)
+  
+  for(t in ts){
+    result_row <- nrow(result_abundance) + 1
+    x <- d[,paste0('N[',i,',',t,']')]
+    
+    result_abundance[result_row, 'popname'] <- popnames[i]
+    result_abundance[result_row, 'popnum'] <- i
+    result_abundance[result_row, 'year'] <- t + 1983
+    result_abundance[result_row, 'yearnum'] <- t
+    result_abundance[result_row, 'N_mean'] <- mean(x)
+    result_abundance[result_row, 'N_median'] <- median(x)
+    result_abundance[result_row, 'N_lower'] <- quantile(x, probs=0.025)
+    result_abundance[result_row, 'N_upper'] <- quantile(x, probs=0.975)
+  }
+}
+
+# save
+write.csv(result_abundance, file='out/tables/abundances_annual.csv', row.names=F)
+write.csv(result_mean, file='out/tables/abundances_mean.csv', row.names=F)
+write.csv(result_harmonic, file='out/tables/abundances_harmonic.csv', row.names=F)
+
+
+
+
+
+
+
