@@ -111,10 +111,25 @@ mean_harmonic <- function(x) (sum(x^-1)/length(x))^-1
 result1 <- mean_harmonic(c(mean(dat$a),
                            mean(dat$b),
                            mean(dat$c)))
-result1
+result1  # THIS RESULT IS ABOUT 786
 
 # mean of Bayesian harmonic mean
 result2 <- mean(apply(dat, 1, mean_harmonic))
-result2
+result2  # THIS RESULT IS ABOUT 672
+
+
+# demonstrate that the regular mean should come out the same either way
+
+# non-Bayesian mean calculated from the mean of Bayesian abundance estimates
+result3 <- mean(c(mean(dat$a),
+                           mean(dat$b),
+                           mean(dat$c)))
+result3  # THIS RESULT IS ABOUT 851
+
+# mean of Bayesian harmonic mean
+result4 <- mean(apply(dat, 1, mean))
+result4  # THIS RESULT IS ABOUT 851
+
+
 
 
