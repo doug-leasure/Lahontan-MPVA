@@ -13,6 +13,11 @@ load('out/objects/jags.dat.R')
 load('out/objects/jm.R')
 load('out/objects/popnames.R')
 
+# genetic years
+dat <- read.csv('in/evolutionary_ecology_data.csv', stringsAsFactors=F)
+dat <- dat[dat$include=="Y",c('creek_pva','year_ab','year_genetics')]
+
+# coda data frame
 x <- jm$mcmc[,which(grepl('N[',varnames(jm$mcmc), fixed=T)), drop=T]
 
 d <- x[[1]]
@@ -23,24 +28,34 @@ d <- as.data.frame(d)
 
 # harmonic mean function
 mean_harmonic <- function(x){
-  (sum(x^-1)/length(x))^-1
+  (sum(x^-1) / length(x))^-1
 }
 
-# setup data
-result_abundance <- data.frame(matrix(NA, nrow=0, ncol=8))
-names(result_abundance) <- c('popname','year','popnum','yearnum','N_mean','N_median','N_lower','N_upper')
-
-result_harmonic <- data.frame(matrix(NA, nrow=0, ncol=8))
-names(result_harmonic) <- c('popname','popnum','year_start','year_end','N_mean','N_median','N_lower','N_upper')
-
-result_mean <- data.frame(matrix(NA, nrow=0, ncol=8))
-names(result_mean) <- c('popname','popnum','year_start','year_end','N_mean','N_median','N_lower','N_upper')
-
 # calculations by population
-for(i in 1:jags.dat$npops){
-  cat(paste(i,'\n'))
-  ts <- jags.dat$t_ti[i,1]:jags.dat$t_ti[i,jags.dat$nt[i]]
-  cols <- paste0('N[',i,',',ts,']')
+result_harmonic <- data.frame(matrix(NA, nrow=0, ncol=9))
+names(result_harmonic) <- c('popname','popnum','year_start','year_end','year_genetics','N_mean','N_median','N_lower','N_upper')
+
+result_mean <- data.frame(matrix(NA, nrow=0, ncol=9))
+names(result_mean) <- c('popname','popnum','year_start','year_end','year_genetics','N_mean','N_median','N_lower','N_upper')
+
+for(i in 1:nrow(dat)){
+  
+  popname <- dat$creek_pva[i]
+  popnum <- which(popnames == popname)
+  
+  cat(paste('row', i, ':', popname, popnum, '\n'))
+  
+  lastyear <- dat$year_ab[i]
+  lastyearnum <- lastyear - 1983
+  
+  if(lastyearnum > jags.dat$t_ti[popnum, jags.dat$nt[popnum]]){
+    warning(paste(popnum, popname, ': ab_year',lastyear,'is later than last data year',1983+jags.dat$t_ti[popnum, jags.dat$nt[popnum]]))
+    lastyearnum <- jags.dat$t_ti[popnum, jags.dat$nt[popnum]]
+    lastyear <- 1983 + lastyearnum
+  }
+  
+  ts <- jags.dat$t_ti[popnum, 1]:lastyearnum
+  cols <- paste0('N[',popnum,',',ts,']')
   result_row <- nrow(result_mean)+1
   
   # mean abundance
@@ -49,10 +64,11 @@ for(i in 1:jags.dat$npops){
   } else {
     x <- d[,cols]
   }
-  result_mean[result_row, 'popname'] <- popnames[i]
-  result_mean[result_row, 'popnum'] <- i
+  result_mean[result_row, 'popname'] <- popnames[popnum]
+  result_mean[result_row, 'popnum'] <- popnum
   result_mean[result_row, 'year_start'] <- min(ts+1983)
   result_mean[result_row, 'year_end'] <- max(ts+1983)
+  result_mean[result_row, 'year_genetics'] <- dat$year_genetics[i]
   result_mean[result_row, 'N_mean'] <- mean(x)
   result_mean[result_row, 'N_median'] <- median(x)
   result_mean[result_row, 'N_lower'] <- quantile(x, probs=0.025)
@@ -64,14 +80,28 @@ for(i in 1:jags.dat$npops){
   } else {
     x <- d[,cols]
   }
-  result_harmonic[result_row, 'popname'] <- popnames[i]
-  result_harmonic[result_row, 'popnum'] <- i
+  result_harmonic[result_row, 'popname'] <- popnames[popnum]
+  result_harmonic[result_row, 'popnum'] <- popnum
   result_harmonic[result_row, 'year_start'] <- min(ts+1983)
   result_harmonic[result_row, 'year_end'] <- max(ts+1983)
+  result_harmonic[result_row, 'year_genetics'] <- dat$year_genetics[i]
   result_harmonic[result_row, 'N_mean'] <- mean(x)
   result_harmonic[result_row, 'N_median'] <- median(x)
   result_harmonic[result_row, 'N_lower'] <- quantile(x, probs=0.025)
   result_harmonic[result_row, 'N_upper'] <- quantile(x, probs=0.975)
+}
+
+# calculations by population x year
+result_abundance <- data.frame(matrix(NA, nrow=0, ncol=8))
+names(result_abundance) <- c('popname','year','popnum','yearnum','N_mean','N_median','N_lower','N_upper')
+
+for(i in 1:jags.dat$npops){
+  
+  cat(paste(i, popnames[i], '\n'))
+  
+  ts <- jags.dat$t_ti[i,1]:jags.dat$t_ti[i,jags.dat$nt[i]]
+  cols <- paste0('N[',i,',',ts,']')
+  result_row <- nrow(result_mean)+1
   
   for(t in ts){
     result_row <- nrow(result_abundance) + 1
